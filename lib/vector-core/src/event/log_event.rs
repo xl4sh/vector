@@ -507,6 +507,13 @@ impl LogEvent {
     /// Merge all fields specified at `fields` from `incoming` to `current`.
     /// Note that `fields` containing dots and other special characters will be treated as a single segment.
     pub fn merge(&mut self, mut incoming: LogEvent, fields: &[impl AsRef<str>]) {
+        let current_val = self.value_mut();
+        let incoming_val = incoming.value_mut();
+        if matches!(current_val, Value::Bytes(_)) && matches!(incoming_val, Value::Bytes(_)) {
+            let incoming_val = std::mem::replace(incoming_val, Value::Null);
+            current_val.merge(incoming_val);
+            return;
+        }
         for field in fields {
             let field_path = event_path!(field.as_ref());
             let Some(incoming_val) = incoming.remove(field_path) else {
